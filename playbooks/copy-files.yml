@@ -1,0 +1,8 @@
+- hosts: "*"
+  gather_facts: yes
+  become: no
+  tasks:
+  - name: Copy files from template directory
+    copy: 
+      src: ../templates/ansible_was_here
+      dest: /home/ubuntu/ansible_was_here

@@ -1,7 +1,8 @@
 - hosts: "*"
+  gather_facts: yes
   become: yes
   tasks:
-    - name: apt 
+    - name: Update the servers 
       apt:
         update_cache: yes
         upgrade: 'yes'
