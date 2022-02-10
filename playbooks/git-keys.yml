@@ -1,0 +1,13 @@
+- hosts: "experiment-server"
+  gather_facts: yes
+  become: no
+  connection: ssh
+  tasks:
+  - name: Copy private key
+    copy: 
+      src: ../keys/terraform-testing-key
+      dest: /home/ubuntu/.ssh/terraform-testing-key
+  - name: Copy public key
+    copy: 
+      src: ../keys/terraform-testing-key.pub
+      dest: /home/ubuntu/.ssh/terraform-testing-key.pub
