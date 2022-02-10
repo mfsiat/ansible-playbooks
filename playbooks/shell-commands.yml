@@ -1,0 +1,15 @@
+- hosts: experiment-server
+  strategy: free 
+  gather_facts: true
+  become: false
+  vars: 
+  tasks:
+  - name: Execute shell commands
+    shell: |
+      cd traefik-wildcard-ssl 
+      git pull
+      docker-compose down --remove-orphans --rmi local
+      docker network create proxy
+      docker-compose up -d
+  - name: Print
+    debug: var=systemctl
