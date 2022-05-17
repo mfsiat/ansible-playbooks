@@ -1,0 +1,13 @@
+- hosts: mayaapaapis
+  strategy: free 
+  gather_facts: true
+  become: false
+  vars: 
+  tasks:
+  - name: Execute shell commands
+    shell: |
+      cd /var/www/html/mayaapi
+      sudo chown www-data:www-data storage/logs/*
+      bash uper.sh
+  - name: Print
+    debug: var=systemctl

@@ -5,9 +5,9 @@
   tasks:
   - name: Copy private key
     copy: 
-      src: ../keys/terraform-testing-key
-      dest: /home/ubuntu/.ssh/terraform-testing-key
+      src: ../keys/id_rsa
+      dest: /home/ubuntu/.ssh/id_rsa
   - name: Copy public key
     copy: 
-      src: ../keys/terraform-testing-key.pub
-      dest: /home/ubuntu/.ssh/terraform-testing-key.pub
+      src: ../keys/id_rsa.pub
+      dest: /home/ubuntu/.ssh/id_rsa.pub
