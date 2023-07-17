@@ -1,4 +1,4 @@
-- hosts: api_maya
+- hosts: server-apt-update 
   gather_facts: yes
   become: yes
   tasks:

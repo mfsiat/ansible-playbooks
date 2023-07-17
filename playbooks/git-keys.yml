@@ -1,4 +1,4 @@
-- hosts: "experiment-server"
+- hosts: jo-services
   gather_facts: yes
   become: no
   connection: ssh

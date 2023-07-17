@@ -1,15 +1,24 @@
-- hosts: experiment-server
+- hosts: jo-services
   strategy: free 
   gather_facts: true
-  become: false
+  become: yes
+  become_user: ubuntu
   vars: 
   tasks:
-  - name: Execute shell commands
+  - name: Execute shell commands for jocial-backend
     shell: |
-      cd traefik-wildcard-ssl 
+      cd jocial-backend
+      git fetch
       git pull
-      docker-compose down --remove-orphans --rmi local
-      docker network create proxy
-      docker-compose up -d
+      npm i
+  - name: Execute shell commands for jocial-backend
+    shell: |
+      cd jo-news-backend
+      git fetch
+      git pull   
+      npm i
+  - name: Install PM2
+    shell: |
+      npm i pm2 -g 
   - name: Print
     debug: var=systemctl
