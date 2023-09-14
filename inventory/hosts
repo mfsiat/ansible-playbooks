@@ -1,4 +1,10 @@
-[ubuntu]
+[maya]
 maya-apa.com-a1  
 maya-apa.com-a2  
 maya-apa.com-b1
+
+[personal-servers]
+jo-services
+jo-mongo
+johukum
+wordpress-softopark

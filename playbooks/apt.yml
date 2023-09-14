@@ -1,4 +1,4 @@
-- hosts: server-apt-update 
+- hosts: personal-servers
   gather_facts: yes
   become: yes
   tasks:
