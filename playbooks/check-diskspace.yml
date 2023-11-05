@@ -1,0 +1,22 @@
+- name: Check Disk Space and Notify
+  hosts: johukum
+  gather_facts: true
+
+  tasks:
+    - name: Get Disk Space Information
+      command: df -hT
+      register: disk_space_result
+      ignore_errors: yes
+
+    - name: Parse Disk Space if Command Succeeds
+      set_fact:
+        disk_space_usage: "{{ (disk_space_result.stdout_lines[1] | regex_replace('\\s+', ' ') | trim).split(' ') | default([]) }}"
+        disk_space_percentage: "{{ disk_space_usage.4 | default(0) | int }}"
+        disk_space_available: "{{ disk_space_usage.3 | default('N/A') }}"
+      when: disk_space_result.rc == 0
+
+    - name: Notify if Disk Space is 30% or more
+      debug:
+        msg: "Disk space is {{ disk_space_percentage }}%. Available space: {{ disk_space_available }}. Please check!"
+
+      when: disk_space_percentage | int >= 30
