@@ -1,0 +1,63 @@
+- name: Create a user with sudo privileges
+  hosts: edb-test-servers
+  become: yes  # Ensure Ansible runs tasks with sudo privileges
+  vars:
+    username: dhupan_1861        # Change this to the desired username
+    password: dhupan_1861     # Change this to the desired password (plaintext)
+  tasks:
+    - name: Ensure the user exists
+      user:
+        name: "{{ username }}"
+        password: "{{ password | password_hash('sha512') }}"
+        shell: /bin/bash
+
+    - name: Add user to sudo group
+      user:
+        name: "{{ username }}"
+        groups: wheel
+        append: yes
+
+    - name: Create SSH directory for the new user
+      file:
+        path: /home/{{ username }}/.ssh
+        state: directory
+        owner: "{{ username }}"
+        group: "{{ username }}"
+        mode: '0700'
+
+    - name: Copy authorized keys
+      copy:
+        src: /path/to/your/public/key.pub  # Change this to the path of your public key
+        dest: /home/{{ username }}/.ssh/authorized_keys
+        owner: "{{ username }}"
+        group: "{{ username }}"
+        mode: '0600'
+
+    - name: Allow passwordless sudo for the new user
+      lineinfile:
+        dest: /etc/sudoers
+        state: present
+        regexp: '^{{ username }} ALL=\(ALL:ALL\) NOPASSWD:ALL'
+        line: '{{ username }} ALL=(ALL:ALL) NOPASSWD:ALL'
+    - name: Ensure password authentication is enabled in SSH
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PasswordAuthentication'
+        line: 'PasswordAuthentication yes'
+      # notify:
+      #   - Restart SSH
+    - name: Restart SSH Service
+      shell: |
+        sudo systemctl restart sshd
+
+    - name: Verify users have been created
+      shell: "id {{ item.username }}"
+      register: user_check
+      ignore_errors: yes
+      with_items: "{{ users }}"
+
+    - name: Print user creation status
+      debug:
+        msg: "User {{ item.item.username }} creation status: {{ item.stdout }}"
+      with_items: "{{ user_check.results }}"
+      when: item.stdout != ''

@@ -1,14 +1,11 @@
-- hosts: api_maya
+- hosts: "loadtesting-servers"
   strategy: free 
-  gather_facts: true
+  gather_facts: false
   become: false
   vars: 
   tasks:
   - name: Execute shell commands
     shell: |
-      cd /var/www/html/api_maya
-      php artisan config:clear
-      php artisan cache:clear
-      sudo systemctl restart php7.1-fpm
+      sudo yum install glances -y
   - name: Print
     debug: var=systemctl
