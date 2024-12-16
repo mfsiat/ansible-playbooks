@@ -1,11 +1,11 @@
-- hosts: "loadtesting-servers"
+- hosts: "k8s-local"
   strategy: free 
   gather_facts: false
-  become: false
+  become: true
   vars: 
   tasks:
   - name: Execute shell commands
     shell: |
-      sudo yum install glances -y
+      sudo apt install glances -y
   - name: Print
     debug: var=systemctl
