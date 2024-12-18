@@ -6,6 +6,7 @@
   tasks:
   - name: Execute shell commands
     shell: |
-      sudo apt install glances -y
+      sudo swapoff -a
+      sudo apt update && sudo apt upgrade -y
   - name: Print
     debug: var=systemctl
