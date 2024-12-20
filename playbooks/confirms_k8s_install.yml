@@ -1,0 +1,98 @@
+- hosts: "k8s-local"
+  strategy: free
+  gather_facts: true
+  become: true
+
+  tasks:
+    # Step 1: Confirm if containerd is installed
+    - name: Check if containerd is installed
+      command: containerd --version
+      register: containerd_installed
+      ignore_errors: yes
+
+    - name: Fail if containerd is not installed
+      fail:
+        msg: "containerd is not installed"
+      when: containerd_installed.rc != 0
+
+    # Step 2: Confirm if kubeadm is installed
+    - name: Check if kubeadm is installed
+      command: kubeadm version -o short
+      register: kubeadm_installed
+      ignore_errors: yes
+
+    - name: Fail if kubeadm is not installed
+      fail:
+        msg: "kubeadm is not installed"
+      when: kubeadm_installed.rc != 0
+
+    # Step 3: Confirm if kubelet is installed
+    - name: Check if kubelet is installed
+      command: kubelet --version
+      register: kubelet_installed
+      ignore_errors: yes
+
+    - name: Fail if kubelet is not installed
+      fail:
+        msg: "kubelet is not installed"
+      when: kubelet_installed.rc != 0
+
+    # Step 4: Confirm if kubectl is installed
+    - name: Check if kubectl is installed
+      command: kubectl version --client --output json
+      register: kubectl_installed
+      ignore_errors: yes
+
+    - name: Fail if kubectl is not installed
+      fail:
+        msg: "kubectl is not installed"
+      when: kubectl_installed.rc != 0
+
+    # Step 5: Ensure kubelet is running with retries
+    - name: Ensure kubelet service is started
+      systemd:
+        name: kubelet
+        state: started
+        enabled: true
+      register: kubelet_running
+      retries: 5
+      delay: 10
+      failed_when: kubelet_running.status != "started"
+
+    - name: Fail if kubelet is not running after retries
+      fail:
+        msg: "kubelet service is not running after retries"
+      when: kubelet_running.status != "started"
+
+    # Step 6: Ensure containerd is running
+    - name: Ensure containerd service is started
+      systemd:
+        name: containerd
+        state: started
+        enabled: true
+      register: containerd_running
+      retries: 5
+      delay: 10
+      failed_when: containerd_running.status != "started"
+
+    - name: Fail if containerd is not running after retries
+      fail:
+        msg: "containerd service is not running after retries"
+      when: containerd_running.status != "started"
+
+    # Step 7: Print versions for confirmation
+    - name: Print containerd version
+      debug:
+        msg: "Containerd version: {{ containerd_installed.stdout }}"
+
+    - name: Print kubeadm version
+      debug:
+        msg: "Kubeadm version: {{ kubeadm_installed.stdout }}"
+
+    - name: Print kubelet version
+      debug:
+        msg: "Kubelet version: {{ kubelet_installed.stdout }}"
+
+    - name: Print kubectl version
+      debug:
+        msg: "Kubectl version: {{ kubectl_installed.stdout }}"

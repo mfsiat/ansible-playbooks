@@ -1,0 +1,142 @@
+- hosts: "k8s-local"
+  strategy: free
+  gather_facts: true
+  become: true
+
+  tasks:
+    # Step 1: Disable Swap
+    - name: Check if swap is disabled
+      shell: swapon --summary
+      register: swap_status
+      changed_when: false
+
+    - name: Disable swap temporarily if active
+      command: swapoff -a
+      when: swap_status.stdout != ""
+
+    - name: Ensure swap is disabled permanently in /etc/fstab
+      lineinfile:
+        path: /etc/fstab
+        regexp: '.*swap.*'
+        line: '# Disabled swap by Ansible'
+        state: present
+
+    # Step 2: Apply sysctl settings
+    - name: Enable kernel modules
+      shell: |
+        modprobe overlay
+        modprobe br_netfilter
+      args:
+        creates: /etc/modules-load.d/kubernetes.conf
+
+    - name: Add sysctl settings for Kubernetes
+      copy:
+        dest: /etc/sysctl.d/kubernetes.conf
+        content: |
+          net.bridge.bridge-nf-call-iptables = 1
+          net.bridge.bridge-nf-call-ip6tables = 1
+          net.ipv4.ip_forward = 1
+
+    - name: Apply sysctl settings
+      command: sysctl --system
+
+    # Step 3: Add Docker Repository
+    - name: Add Docker GPG key if not present
+      shell: |
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+      args:
+        creates: /usr/share/keyrings/docker-archive-keyring.gpg
+
+    - name: Add Docker repository
+      shell: |
+        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list
+      args:
+        creates: /etc/apt/sources.list.d/docker.list
+
+    - name: Update APT cache after adding Docker repo
+      apt:
+        update_cache: yes
+
+    # Step 4: Install Container Runtime (containerd)
+    - name: Install containerd.io
+      apt:
+        name: containerd.io
+        state: present
+
+    - name: Configure containerd
+      shell: |
+        containerd config default | tee /etc/containerd/config.toml
+        sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+      args:
+        creates: /etc/containerd/config.toml
+
+    - name: Restart and enable containerd service
+      systemd:
+        name: containerd
+        state: restarted
+        enabled: true
+
+    # Step 5: Add Kubernetes Repository
+    - name: Add Kubernetes GPG key
+      shell: |
+        curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+      args:
+        creates: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+    - name: Add Kubernetes repository
+      shell: |
+        echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /' | tee /etc/apt/sources.list.d/kubernetes.list
+      args:
+        creates: /etc/apt/sources.list.d/kubernetes.list
+
+    - name: Update APT cache after adding Kubernetes repo
+      apt:
+        update_cache: yes
+
+    # Step 6: Install Kubernetes Components
+    - name: Install kubeadm, kubelet, and kubectl
+      apt:
+        name:
+          - kubeadm
+          - kubelet
+          - kubectl
+        state: present
+
+    - name: Mark Kubernetes packages on hold
+      shell: apt-mark hold kubelet kubeadm kubectl
+
+    # Step 7: Restart kubelet and enable it
+    - name: Restart and enable kubelet
+      systemd:
+        name: kubelet
+        state: restarted
+        enabled: true
+
+    # Step 8: Print Installed Versions
+    - name: Get kubeadm version
+      command: kubeadm version -o short
+      register: kubeadm_version
+
+    - name: Get kubelet version
+      command: kubelet --version
+      register: kubelet_version
+
+    - name: Get kubectl version
+      command: kubectl version --client --output json
+      register: kubectl_version
+
+    - name: Get containerd version
+      command: containerd --version
+      register: containerd_version
+
+    - name: Parse kubectl version from JSON
+      set_fact:
+        kubectl_version_parsed: "{{ kubectl_version.stdout | from_json | json_query('clientVersion.gitVersion') }}"
+
+    - name: Print installed versions
+      debug:
+        msg:
+          - "Kubeadm version: {{ kubeadm_version.stdout }}"
+          - "Kubelet version: {{ kubelet_version.stdout }}"
+          - "Kubectl version: {{ kubectl_version_parsed }}"
+          - "Containerd version: {{ containerd_version.stdout }}"
