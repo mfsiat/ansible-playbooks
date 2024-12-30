@@ -1,0 +1,91 @@
+- name: Run commands on the server
+  hosts: env42
+  become: yes  # Enable privilege escalation (sudo)
+  become_method: sudo  # Use sudo for privilege escalation
+  become_user: root  # The user to become, default is root  
+  tasks:
+    - name: Execute multiline command
+      shell: |
+        cd /bits/sbicloud/
+        sh tomcat-hr/bin/shutdown.sh && sh tomcat-mf/bin/shutdown.sh && sh tomcat-acc/bin/shutdown.sh
+        ps aux | grep tomcat-hr | grep -v grep | awk '{print $2}' | xargs kill -9
+        ps aux | grep tomcat-mf | grep -v grep | awk '{print $2}' | xargs kill -9
+        ps aux | grep tomcat-acc | grep -v grep | awk '{print $2}' | xargs kill -9
+      register: command_output
+
+    - name: Show output of the multiline command
+      debug:
+        var: command_output.stdout
+
+    - name: Clean Redis Cache
+      shell: |
+        sh /bits/sbicloud/redis_clean.sh
+      register: redis_clean_output
+
+    - name: Show output redis cache clean
+      debug:
+        var: redis_clean_output.stdout    
+
+    - name: Delete old war files
+      shell: |
+        cd /bits/sbicloud/
+        rm -rf tomcat-hr/webapps/* && rm -rf tomcat-hr/temp/* && rm -rf tomcat-hr/work/*
+        rm -rf tomcat-mf/webapps/* && rm -rf tomcat-mf/temp/* && rm -rf tomcat-mf/work/*
+        rm -rf tomcat-acc/webapps/* && rm -rf tomcat-acc/temp/* && rm -rf tomcat-acc/work/*
+      register: delete_old_artifact_output
+
+    - name: Delete the artifacts
+      debug:
+        var: delete_old_artifact_output.stdout
+
+- name: SCP and place artifacts in their respective directories
+  hosts: env42
+  become: yes
+  become_method: sudo
+  become_user: root
+  vars_files:
+    - dynamic_path.yml  # Load the file containing dynamic paths and server info
+
+  tasks:
+    - name: Download and rename hrm-proc.war as ROOT.war to Tomcat HR webapps directory
+      shell: |
+        scp -i keys/release_vm_key -P {{ remote_port }} {{ remote_user }}@{{ remote_host }}:{{ remote_path }}/hrm-proc.war /bits/sbicloud/tomcat-hr/webapps/ROOT.war
+      args:
+        executable: /bin/bash
+      register: hrm_proc_output
+
+    - name: Show SCP output for hrm-proc.war
+      debug:
+        var: hrm_proc_output.stdout
+
+    - name: Download and rename mf.war as node.war to Tomcat MF webapps directory
+      shell: |
+        scp -i keys/release_vm_key -P {{ remote_port }} {{ remote_user }}@{{ remote_host }}:{{ remote_path }}/mf.war /bits/sbicloud.tomcat-mf/webapps/node.war
+      args:
+        executable: /bin/bash
+      register: mf_output
+
+    - name: Show SCP output for mf.war
+      debug:
+        var: mf_output.stdout
+
+    - name: Download and rename acc-fa.war as nodef.war to Tomcat ACC webapps directory
+      shell: |
+        scp -i keys/release_vm_key -P {{ remote_port }} {{ remote_user }}@{{ remote_host }}:{{ remote_path }}/acc-fa.war /bits/sbicloud/tomcat-acc/webapps/nodef.war
+      args:
+        executable: /bin/bash
+      register: acc_fa_output
+
+    - name: Show SCP output for acc-fa.war
+      debug:
+        var: acc_fa_output.stdout
+    
+    - name: Start the tomcats
+      shell: |
+        cd /bits/sbicloud/
+        sh tomcat-hr/bin/startup.sh && sh tomcat-mf/bin/startup.sh && sh tomcat-acc/bin/startup.sh
+      register: tomcat_startup
+
+    - name: Start the tomcats
+      debug:
+        var: tomcat_startup.stdout    

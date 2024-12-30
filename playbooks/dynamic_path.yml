@@ -1,0 +1,5 @@
+remote_host: 10.42.65.59
+remote_port: 22
+remote_user: root
+remote_password: bl@Mobi$Digi%
+remote_path: /DevRelease/sbicloud-bd-auto/split-war-2.5.1.000b1-FAHOV2-HOFA-asset-offline-transfer-assign-unassign-sprint09-release-01
