@@ -1,0 +1,113 @@
+---
+- name: Install Docker and Docker Compose
+  hosts: epms-loadtesting
+  become: yes
+  tasks:
+    - name: Gather OS facts
+      ansible.builtin.setup:
+        gather_subset:
+          - 'distribution'
+
+    - name: Ensure the system is supported
+      ansible.builtin.fail:
+        msg: "This playbook supports only Ubuntu and CentOS/RHEL."
+      when: ansible_os_family not in ["Debian", "RedHat"]
+
+    - name: Ensure Ubuntu version is supported
+      ansible.builtin.fail:
+        msg: "Only Ubuntu 18.04, 20.04, and 22.04 are supported."
+      when: ansible_distribution == "Ubuntu" and ansible_distribution_version not in ["18.04", "20.04", "22.04"]
+
+    - name: Ensure CentOS version is supported
+      ansible.builtin.fail:
+        msg: "Only CentOS 7 and 8 are supported."
+      when: ansible_distribution == "CentOS" and ansible_distribution_major_version not in ["7", "8"]
+
+    # Tasks for Ubuntu
+    - name: Update package index (Ubuntu)
+      ansible.builtin.apt:
+        update_cache: yes
+      when: ansible_distribution == "Ubuntu"
+
+    - name: Install prerequisites for Docker (Ubuntu)
+      ansible.builtin.apt:
+        name: 
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+        state: present
+      when: ansible_distribution == "Ubuntu"
+
+    - name: Add Docker's official GPG key (Ubuntu)
+      ansible.builtin.shell:
+        cmd: >
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg |
+          gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+      args:
+        warn: false
+      when: ansible_distribution == "Ubuntu"
+
+    - name: Add Docker's official repository (Ubuntu)
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+      when: ansible_distribution == "Ubuntu"
+
+    # Tasks for CentOS
+    - name: Install prerequisites for Docker (CentOS)
+      ansible.builtin.yum:
+        name:
+          - yum-utils
+          - device-mapper-persistent-data
+          - lvm2
+        state: present
+      when: ansible_distribution == "CentOS"
+
+    - name: Add Docker's official repository (CentOS)
+      ansible.builtin.yum_repository:
+        name: docker
+        description: Docker CE Repository
+        baseurl: https://download.docker.com/linux/centos/docker-ce.repo
+        gpgcheck: yes
+        enabled: yes
+      when: ansible_distribution == "CentOS"
+
+    # Common tasks for all distributions
+    - name: Install Docker
+      ansible.builtin.package:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+
+    - name: Ensure Docker service is enabled and running
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Install latest Docker Compose
+      ansible.builtin.get_url:
+        url: "https://github.com/docker/compose/releases/latest/download/docker-compose-{{ ansible_system | lower }}-{{ ansible_architecture }}"
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
+
+    - name: Verify Docker version
+      ansible.builtin.shell:
+        cmd: docker --version
+      register: docker_version_output
+
+    - name: Show Docker version
+      ansible.builtin.debug:
+        msg: "{{ docker_version_output.stdout }}"
+
+    - name: Verify Docker Compose version
+      ansible.builtin.shell:
+        cmd: docker-compose --version
+      register: docker_compose_version_output
+
+    - name: Show Docker Compose version
+      ansible.builtin.debug:
+        msg: "{{ docker_compose_version_output.stdout }}"
