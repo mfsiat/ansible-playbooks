@@ -1,24 +1,54 @@
-- hosts: jo-services
-  strategy: free 
-  gather_facts: true
-  become: yes
-  become_user: ubuntu
-  vars: 
+- name: New VM Setup script
+  hosts: dev-payroll-data-migration
+  become: yes  # Enable privilege escalation (sudo)
+  become_method: sudo  # Use sudo for privilege escalation
+  become_user: root  # The user to become, default is root  
   tasks:
-  - name: Execute shell commands for jocial-backend
-    shell: |
-      cd jocial-backend
-      git fetch
-      git pull
-      npm i
-  - name: Execute shell commands for jocial-backend
-    shell: |
-      cd jo-news-backend
-      git fetch
-      git pull   
-      npm i
-  - name: Install PM2
-    shell: |
-      npm i pm2 -g 
-  - name: Print
-    debug: var=systemctl
+    - name: Fix time and setup docker
+      shell: |
+        timedatectl set-timezone Asia/Dhaka && echo 'HISTTIMEFORMAT="%a %d %b %Y %I:%M:%S %p "' >> .bashrc && source .bashrc
+        apt install acct -y && systemctl enable --now acct
+        sudo apt -y update
+        sudo apt install apt-transport-https ca-certificates curl software-properties-common -y
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+        sudo apt update -y
+        sudo apt install glances -y
+        sudo apt install net-tools -y
+        apt-cache policy docker-ce
+        sudo apt install docker-ce -y
+
+      register: command_output
+
+    - name: Show output of the multiline command
+      debug:
+        var: command_output.stdout
+
+    - name: Setup docker compose
+      shell: |
+        mkdir -p ~/.docker/cli-plugins/
+        curl -SL https://github.com/docker/compose/releases/download/v2.3.3/docker-compose-linux-x86_64 -o ~/.docker/cli-plugins/docker-compose
+        chmod +x ~/.docker/cli-plugins/docker-compose
+
+      register: docker_compose_setup
+
+    - name: Show output of the multiline command
+      debug:
+        var: docker_compose_setup.stdout
+
+    - name: Show output of the multiline command
+      debug:
+        var: command_output.stdout
+
+    - name: Setup node exporter
+      shell: |
+        mkdir -p ~/.node_exporter/
+        cd ~/.node_exporter/
+        curl -o docker-compose.yml https://raw.githubusercontent.com/mfsiat/docker-containers/refs/heads/master/node-exporter/docker-compose.yml
+        docker compose up 
+
+      register: node_exporter_setup
+
+    - name: Show output of the multiline command
+      debug:
+        var: node_exporter_setup.stdout

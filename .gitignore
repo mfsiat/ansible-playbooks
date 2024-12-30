@@ -1,2 +1,3 @@
 keys/*
+playbooks/dynamic_path.yml
 inventory/hosts
