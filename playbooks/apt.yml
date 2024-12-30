@@ -1,8 +1,24 @@
-- hosts: personal-servers
+- hosts: k8s-local
   gather_facts: yes
   become: yes
   tasks:
-    - name: Update the servers 
+    - name: Display the target host IP
+      debug:
+        msg: "Target host: {{ ansible_default_ipv4.address }}"
+
+    - name: Update the package list
       apt:
         update_cache: yes
+      register: update_cache_result
+      changed_when: update_cache_result.changed
+    - name: Display update cache result
+      debug:
+        var: update_cache_result
+
+    - name: Upgrade all installed packages
+      apt:
         upgrade: 'yes'
+      register: upgrade_result
+    - name: Display upgrade result
+      debug:
+        var: upgrade_result

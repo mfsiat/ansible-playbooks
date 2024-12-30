@@ -11,3 +11,7 @@ loadtesting-erp-redis
 edb-test-1
 edb-test-2
 edb-test-3
+[k8s-local]
+192.168.122.57 ansible_connection=ssh ansible_port=22 ansible_user=siat ansible_password=12345 ansible_become_password=12345
+192.168.122.89 ansible_connection=ssh ansible_port=22 ansible_user=siat ansible_password=12345 ansible_become_password=12345
+192.168.122.147 ansible_connection=ssh ansible_port=22 ansible_user=siat ansible_password=12345 ansible_become_password=12345
