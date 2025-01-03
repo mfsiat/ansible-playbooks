@@ -1,0 +1,35 @@
+---
+- name: Setup Node Exporter with Docker Compose
+  hosts: smartpobm
+  become: yes
+  tasks:
+    - name: Create .node_exporter directory
+      ansible.builtin.file:
+        path: "{{ ansible_env.HOME }}/.node_exporter"
+        state: directory
+        mode: '0755'
+
+    - name: Change to .node_exporter directory
+      ansible.builtin.shell: cd "{{ ansible_env.HOME }}/.node_exporter/"
+      args:
+        chdir: "{{ ansible_env.HOME }}/.node_exporter/"
+
+    - name: Download docker-compose.yml for Node Exporter
+      ansible.builtin.get_url:
+        url: "https://raw.githubusercontent.com/mfsiat/docker-containers/refs/heads/master/node-exporter/docker-compose.yml"
+        dest: "{{ ansible_env.HOME }}/.node_exporter/docker-compose.yml"
+        mode: '0644'
+
+    - name: Start Node Exporter with Docker Compose
+      ansible.builtin.shell:
+        cmd: docker compose up -d
+      args:
+        chdir: "{{ ansible_env.HOME }}/.node_exporter/"
+
+    - name: Verify Docker Compose services
+      ansible.builtin.shell: docker compose ps
+      register: compose_status
+
+    - name: Display Docker Compose services status
+      ansible.builtin.debug:
+        msg: "{{ compose_status.stdout }}"

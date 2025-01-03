@@ -1,6 +1,6 @@
 ---
 - name: Install Docker and Docker Compose
-  hosts: epms-loadtesting
+  hosts: smartpobm
   become: yes
   tasks:
     - name: Gather OS facts
